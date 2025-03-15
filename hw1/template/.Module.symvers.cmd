@@ -1,0 +1,1 @@
+cmd_/home/sofiyen/SSD2025/hw1/template/Module.symvers :=  sed 's/ko$$/o/'  /home/sofiyen/SSD2025/hw1/template/modules.order | scripts/mod/modpost      -o /home/sofiyen/SSD2025/hw1/template/Module.symvers -e -i Module.symvers -T - 

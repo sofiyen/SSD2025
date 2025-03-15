@@ -1,0 +1,1 @@
+cmd_/home/sofiyen/SSD2025/hw1/template/rootkit.ko := aarch64-linux-gnu-ld -r -EL  -maarch64elf -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /home/sofiyen/SSD2025/hw1/template/rootkit.ko /home/sofiyen/SSD2025/hw1/template/rootkit.o /home/sofiyen/SSD2025/hw1/template/rootkit.mod.o;  true
