@@ -6,4 +6,5 @@
 		make ARCH=arm64 defconfig
 		make ARCH=arm64 -j$(nproc) 
 		```
+	- REMEMBER to add copied `linux/` into `.gitignore` whenever you copied it. Only the root directory should contain a full linux source code.
 		
