@@ -157,7 +157,7 @@ static asmlinkage int fake_read (pt_regs *regs) {
     filter *cur;
     struct task_struct *current_t = current;
     list_for_each_entry(cur, &head->list, list) {
-        if (strcmp(cur->comm, current_t->comm))
+        if (strcmp(cur->comm, current_t->comm) == 0)
             return -EPERM;
     }
     return real_read(regs);
@@ -167,7 +167,7 @@ static asmlinkage int fake_write (pt_regs *regs) {
     filter *cur;
     struct task_struct *current_t = current;
     list_for_each_entry(cur, &head->list, list) {
-        if (strcmp(cur->comm, current_t->comm))
+        if (strcmp(cur->comm, current_t->comm) == 0)
             return -EPERM;
     }
     return real_write(regs);
