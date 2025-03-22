@@ -2,6 +2,6 @@
 
 ## Test
 
-Please `make` on **host** in `test/` to build the test tools, because the guest doesn't have the ability to compile.
-
-Run `test/test.sh` on **guest** to test the module. You should be able to run the script in any directory. If you failed to run the script, please `cd` to `test` directory before running the script.
+Please run test on **guest** machine. To run the test you must have `gcc` and `make` installed. Then follow these steps to test the module.
+1. Under `test/` run `make` to compile test programs.
+2. Run `test/test.sh` to test the module.

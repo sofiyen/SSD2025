@@ -7,9 +7,6 @@ NO_COLOR='\033[0m'
 MODULE_NAME="rootkit"
 MODULE_PATH="../src/rootkit.ko"
 
-TEST1_RESULT=
-TEST2_RESULT=
-
 test_hide_unhide_module() {
     echo "===== Hide/Unhide Module Test =========="
     # Ensure toggle_module_visibility exists
@@ -51,9 +48,10 @@ test_masquerade() {
     else
         echo "Creating vim process..."
         vim > /dev/null 2>&1 &
+        disown
         VIM_PID=$!
 
-        echo "Masquerading module..."
+        echo "Masquerading vim to vi..."
         sudo ./masquerade vim vi > /dev/null
 
         # Get the new process name
@@ -68,11 +66,13 @@ test_masquerade() {
 
         kill $VIM_PID
 
+        # ========================================
+
         echo "Creating vim process..."
         vim > /dev/null 2>&1 &
+        disown
         VIM_PID=$!
 
-        # Try vim -> omg
         echo "Masquerading vim to omg..."
         sudo ./masquerade vim omg > /dev/null
 
@@ -91,6 +91,22 @@ test_masquerade() {
 
     echo -e "${GREEN}Passed${NO_COLOR}"
     return 0
+}
+
+test_syscall_filter() {
+    echo "===== Syscall Filter Test =============="
+    # Ensure syscall_filter exists
+    if ! [ -f "./syscall_filter" ]; then
+        echo "./syscall_filter file does not exist. Please compile it first."
+        return 1
+    fi
+
+    ./syscall_filter
+    ret=$?
+    if [ $ret -eq 0 ]; then
+        echo -e "${GREEN}Passed${NO_COLOR}"
+    fi
+    return $ret
 }
 
 # Set pwd to the directory of this script
@@ -127,6 +143,9 @@ TEST1_RESULT=$?
 test_masquerade
 TEST2_RESULT=$?
 
+test_syscall_filter
+TEST3_RESULT=$?
+
 echo "===== Cleaning up ======================"
 
 # Unload module
@@ -155,6 +174,12 @@ if [ $TEST2_RESULT -eq 0 ]; then
     echo -e "${GREEN}Masquerade test passed.${NO_COLOR}"
 else
     echo -e "${RED}Masquerade test failed.${NO_COLOR}"
+fi
+
+if [ $TEST3_RESULT -eq 0 ]; then
+    echo -e "${GREEN}Syscall filter test passed.${NO_COLOR}"
+else
+    echo -e "${RED}Syscall filter test failed.${NO_COLOR}"
 fi
 
 exit 0
