@@ -324,13 +324,13 @@ static int __init rootkit_init(void) {
 }
 
 static void __exit rootkit_exit(void) {
-    // unhook syscall
     struct filter *cur, *tmp;
     
-    // cleanup syscall filter list
+    // unhook syscall
     remove_syscall_hook();
     pr_info("removed syscall hooks\n");
 
+    // cleanup syscall filter list
     list_for_each_entry_safe(cur, tmp, &filter_list, list) {
         list_del(&cur->list);
         pr_info("removed filter syscall_nr=%d, comm=%s\n", cur->syscall_nr, cur->comm);
