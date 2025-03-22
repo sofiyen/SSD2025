@@ -8,15 +8,13 @@
 The default arguments for shared directory is:
 
 ```
--virtfs local,path=$SHARED_DIR,mount_tag=shared,security_
-model=passthrough,readonly
+-virtfs local,path=$SHARED_DIR,mount_tag=shared,security_model=passthrough,readonly
 ```
 
 To equip guest OS with write permission of the shared directory, modify your qemu arguments to:
 
 ```
--virtfs local,path=$SHARED_DIR,mount_tag=shared,security_
-model=mapped
+-virtfs local,path=$SHARED_DIR,mount_tag=shared,security_model=mapped
 ```
 
 - Disable read-only
