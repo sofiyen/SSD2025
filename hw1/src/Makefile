@@ -1,7 +1,8 @@
 obj-m = rootkit.o
 PWD := $(shell pwd)
 EXTRA_CFLAGS = -Wall -g
-KDIR = ../../linux
+KDIR = /usr/src/linux
+CROSS = aarch64-linux-gnu-
 
 all:
 	$(MAKE) ARCH=arm64 CROSS_COMPILE=$(CROSS) -C $(KDIR) M=$(PWD) modules
