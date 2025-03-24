@@ -114,6 +114,9 @@ echo "===== Assignment 1 Test ================"
 cd "$(dirname "$0")"
 echo "Testing directory: $(pwd)"
 
+echo "===== Build Test Programs =============="
+make
+
 # Make sure the module is not loaded
 if lsmod | grep "$MODULE_NAME" &> /dev/null ; then
     echo "Module $MODULE_NAME is already loaded. Please unload it first."
@@ -161,6 +164,8 @@ if lsmod | grep "$MODULE_NAME" &> /dev/null ; then
 else
     echo "Module $MODULE_NAME is successfully unloaded."
 fi
+
+make clean
 
 echo "===== Result ==========================="
 
