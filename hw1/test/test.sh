@@ -5,7 +5,6 @@ RED='\033[0;31m'
 NO_COLOR='\033[0m'
 
 MODULE_NAME="rootkit"
-MODULE_PATH="../src/rootkit.ko"
 
 test_hide_unhide_module() {
     echo "===== Hide/Unhide Module Test =========="
@@ -117,26 +116,10 @@ echo "Testing directory: $(pwd)"
 echo "===== Build Test Programs =============="
 make
 
-# Make sure the module is not loaded
 if lsmod | grep "$MODULE_NAME" &> /dev/null ; then
-    echo "Module $MODULE_NAME is already loaded. Please unload it first."
-    exit 1
-fi
-
-# Make sure the module exists
-if [ ! -f "$MODULE_PATH" ]; then
-    echo "Module $MODULE_NAME does not exist at $MODULE_PATH. Please compile it first."
-    exit 1
-fi
-
-# Load the module
-echo "Loading module $MODULE_NAME..."
-sudo insmod "$MODULE_PATH"
-
-if lsmod | grep "$MODULE_NAME" &> /dev/null ; then
-    echo "Module $MODULE_NAME is successfully loaded."
+    echo "Module $MODULE_NAME is loaded."
 else
-    echo "Failed to load module $MODULE_NAME."
+    echo "Module $MODULE_NAME is not loaded."
     exit 1
 fi
 
@@ -148,24 +131,6 @@ TEST2_RESULT=$?
 
 test_syscall_filter
 TEST3_RESULT=$?
-
-echo "===== Cleaning up ======================"
-
-# Unload module
-echo "Unloading module $MODULE_NAME..."
-if ! sudo rmmod "$MODULE_NAME" ; then
-    echo "Failed to unload module $MODULE_NAME."
-    exit 1
-fi
-
-if lsmod | grep "$MODULE_NAME" &> /dev/null ; then
-    echo "Failed to unload module $MODULE_NAME."
-    exit 1
-else
-    echo "Module $MODULE_NAME is successfully unloaded."
-fi
-
-make clean
 
 echo "===== Result ==========================="
 
