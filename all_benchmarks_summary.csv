@@ -1,0 +1,6 @@
+workload,algorithm,avg_swap_out_latency(µs),avg_swap_in_latency(µs),compression_ratio,compression_cpu_ratio(%),source
+mem,lz4,5,0,0.1149,1.79,lz4_mem_1744539593
+mem,lz4hc,58,0,0.156,9.85,lz4hc_mem_1744540059
+mem,lzo,4,0,0.2204,0.19,lzo_mem_1744539855
+mem,lzo-rle,2,0,0.1981,1.23,lzo-rle_mem_1744539953
+mem,zstd,3,0,0.007,2.49,zstd_mem_1744539673
