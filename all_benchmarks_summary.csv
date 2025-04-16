@@ -1,6 +1,12 @@
 workload,algorithm,avg_swap_out_latency(µs),avg_swap_in_latency(µs),compression_ratio,compression_cpu_ratio(%),source
-mem,lz4,5,0,0.1149,1.79,lz4_mem_1744539593
-mem,lz4hc,58,0,0.156,9.85,lz4hc_mem_1744540059
-mem,lzo,4,0,0.2204,0.19,lzo_mem_1744539855
-mem,lzo-rle,2,0,0.1981,1.23,lzo-rle_mem_1744539953
-mem,zstd,3,0,0.007,2.49,zstd_mem_1744539673
+io,lz4,4,3.0,0.2243,0.58,lz4_io_1744783983
+io,lz4hc,66,2.0,0.3553,4.37,lz4hc_io_1744785042
+io,lzo,4,5.0,0.2863,0.21,lzo_io_1744784810
+io,lzo-rle,2,4.0,0.2621,0.13,lzo-rle_io_1744784865
+io,zstd,6,9.0,0.2259,0.5,zstd_io_1744785151
+mem,lz4,5,0.0,0.1149,1.79,lz4_mem_1744539593
+mem,lz4hc,58,0.0,0.156,9.85,lz4hc_mem_1744540059
+mem,lzo,4,0.0,0.2204,0.19,lzo_mem_1744539855
+mem,lzo-rle,2,0.0,0.1981,1.23,lzo-rle_mem_1744539953
+mem,zstd,1,,0.0823,1.59,zstd_mem_1744719829
+mem,zstd,3,0.0,0.007,2.49,zstd_mem_1744539673
