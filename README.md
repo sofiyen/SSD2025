@@ -1,7 +1,7 @@
 # SSD final project
 ## Stage 1 : Benchmarking
 
-<span style="background-color: #ffcccc; color: black; padding: 2px 6px; border-radius: 4px;">&gt;&gt; Current Problem : swap-in not activated with `io` workload。</span>
+<span style="background-color:rgb(225, 135, 135); color: black; padding: 2px 6px; border-radius: 4px;">Current Problem : swap-in not activated with `io` workload。</span>
 
 ### Run
 ```bash
