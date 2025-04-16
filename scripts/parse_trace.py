@@ -74,13 +74,16 @@ decomp_latency = {}
 all_comp_times = []
 
 for line in lines:
+
     match = line_re.match(line)
     if not match:
         continue
 
+
     timestamp = float(match.group(1))
     event = match.group(2)
     index = int(match.group(3))
+
 
     if event == 'zram_comp_start':
         comp_start[index] = timestamp
@@ -92,6 +95,8 @@ for line in lines:
         decomp_start[index] = timestamp
     elif event == 'zram_decomp_end' and index in decomp_start:
         decomp_latency[index] = timestamp - decomp_start[index]
+
+print(decomp_latency)
 
 # 輸出詳細 latency 列表
 print("index,swap_out_latency,swap_in_latency")
@@ -115,4 +120,19 @@ else:
     print("# total_compress_time=0.000000")
     print("# benchmark_window=0.000000")
     print("# compression_cpu_ratio=0.00")
+
+
+
+valid_out_latencies = list(comp_latency.values())
+if valid_out_latencies:
+    avg_out_latency = sum(valid_out_latencies) / len(valid_out_latencies)
+    print(f"# avg_swap_out_latency_us={avg_out_latency * 1e6:.0f}")
+else:
+    print(f"# avg_swap_out_latency_us=0")
+valid_in_latencies = list(decomp_latency.values())
+if valid_in_latencies:
+    avg_in_latency = sum(valid_in_latencies) / len(valid_in_latencies)
+    print(f"# avg_swap_in_latency_us={avg_in_latency * 1e6:.0f}")
+else:
+    print(f"# avg_swap_in_latency_us=0")
 

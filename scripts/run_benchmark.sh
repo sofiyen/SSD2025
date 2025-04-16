@@ -50,8 +50,28 @@ if [[ "$WORKLOAD" == "cpu" ]]; then
     wait $CPU_PID
 elif [[ "$WORKLOAD" == "mem" ]]; then
     stress-ng --vm 4 --vm-bytes 90% --vm-method all --timeout 30s
+
 elif [[ "$WORKLOAD" == "io" ]]; then
-    fio --name=test --rw=randrw --rwmixread=50 --bs=4k --size=1G --runtime=30s --numjobs=2 --group_reporting
+    echo "[*] Generating test file..."
+    rm -f /tmp/bigfile
+    sync; echo 3 > /proc/sys/vm/drop_caches
+    dd if=/dev/urandom of=/tmp/bigfile bs=1M count=2048 status=none
+
+    echo "[*] Launching memory pressure (95%)..."
+    stress-ng --vm 2 --vm-bytes 95% --timeout 30s &
+    STRESS_PID=$!
+    sleep 5 
+    wait $STRESS_PID
+    echo "orig, comp, total_mem, mem_limit, mem_used_max, same_pages, page_compacted, huge_pages, huge_pages_since"
+    cat /sys/block/zram0/mm_stat
+    # swap-in
+    sync; echo 3 > /proc/sys/vm/drop_caches
+    echo "[*] Starting memory-active IO workload to trigger swap-in"
+    python3 scripts/read_swap.py &
+    READ_PID=$!
+    sleep 10
+    # kill -INT $READ_PID
+
 elif [[ "$WORKLOAD" == "mixed" ]]; then
     stress-ng --cpu 2 --vm 2 --vm-bytes 75% --hdd 1 --timeout 30s
 else
@@ -105,8 +125,8 @@ fi
 ### ------------------------------
 ### 匯總 latency 為平均值 : 單位 microseconds
 ### ------------------------------
-AVG_SWAP_OUT=$(awk -F',' '{sum+=$2*1000000} END{if(NR>0) printf "%.0f", sum/NR}' $OUTDIR/latency.csv)
-AVG_SWAP_IN=$(awk -F',' '{sum+=$3*1000000} END{if(NR>0) printf "%.0f", sum/NR}' $OUTDIR/latency.csv)
+AVG_SWAP_IN=$(grep avg_swap_in_latency_us $OUTDIR/latency.csv | cut -d= -f2)
+AVG_SWAP_OUT=$(grep avg_swap_out_latency_us $OUTDIR/latency.csv | cut -d= -f2)
 
 ### ------------------------------
 ### 輸出 summary.csv
