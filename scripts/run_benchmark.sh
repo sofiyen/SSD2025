@@ -52,25 +52,27 @@ elif [[ "$WORKLOAD" == "mem" ]]; then
     stress-ng --vm 4 --vm-bytes 90% --vm-method all --timeout 30s
 
 elif [[ "$WORKLOAD" == "io" ]]; then
-    echo "[*] Generating test file..."
-    rm -f /tmp/bigfile
+    echo "[*] Drop caches..."
     sync; echo 3 > /proc/sys/vm/drop_caches
-    dd if=/dev/urandom of=/tmp/bigfile bs=1M count=2048 status=none
 
-    echo "[*] Launching memory pressure (95%)..."
-    stress-ng --vm 2 --vm-bytes 95% --timeout 30s &
-    STRESS_PID=$!
-    sleep 5 
-    wait $STRESS_PID
+    echo "[*] Running allocation script to fill anonymous memory..."
+    python3 ./scripts/allocate_and_touch.py &
+
+    ALLOC_PID=$!
+    sleep 10
+
+    echo "[*] Launching memory pressure..."
+    stress-ng --vm 2 --vm-bytes 95% --timeout 30s
+    wait $ALLOC_PID
+
+    echo "[*] Triggering swap-in (second access phase)..."
+    # access again using same script logic
+    python3 ./scripts/access_anonymous.py
+
+    echo "[*] Checking zram stats..."
     echo "orig, comp, total_mem, mem_limit, mem_used_max, same_pages, page_compacted, huge_pages, huge_pages_since"
     cat /sys/block/zram0/mm_stat
-    # swap-in
-    sync; echo 3 > /proc/sys/vm/drop_caches
-    echo "[*] Starting memory-active IO workload to trigger swap-in"
-    python3 scripts/read_swap.py &
-    READ_PID=$!
-    sleep 10
-    # kill -INT $READ_PID
+
 
 elif [[ "$WORKLOAD" == "mixed" ]]; then
     stress-ng --cpu 2 --vm 2 --vm-bytes 75% --hdd 1 --timeout 30s

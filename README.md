@@ -1,6 +1,6 @@
 # SSD final project
 ## Stage 1 : Benchmarking
-> ⚠️ Current Problem : swap-in not activated with `io` workload。
+> ⚠️ Current Problem : all good。
 
 ### Run
 ```bash
@@ -25,12 +25,14 @@ benchmark
 ├── all_benchmarks_summary.csv : 所有 test 的 summary 結果。
 ├── plot_mem_summary.png : 對於某一個 workload (這裏是 mem) 的 summary plot。
 └── scripts
+    ├── access_anonymous.py 
+    ├── allocate_and_touch.py
     ├── build_zram.sh : 開起 zram。
     ├── merge_summary.py : 產生 ../all_benchmarks_summary.csv。
     ├── parse_trace.py : 處理 results/trace.log。
     ├── plot.py : 根據不同 workload，plot ../all_benchmarks.summary.csv。
-    ├── read_swap.py : 為了產生 swap-in 跑的 python script。
     └── run_benchmark.sh : 主要的 shell script，用來跑一個 workload + algorithm 組合。
 ```
 ### Benchmarks
+
 ### Benchmark Conditions
