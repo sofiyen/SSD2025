@@ -6,5 +6,5 @@
 
 ## Instructions
 
-1. Run `benchmark` to get `result.md`
-2. Run `plot` to plot the results
+1. Run `./benchmark` to get `result.md`
+2. Run `./plot` to plot the results
