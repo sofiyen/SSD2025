@@ -1,0 +1,131 @@
+#!/usr/bin/python3
+
+import re
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+import os
+
+def parse_lzbench_results(filepath):
+    """Parses the lzbench result markdown file."""
+    data = []
+    try:
+        with open(filepath, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        print(f"Error: File not found at {filepath}")
+        return None
+
+    for line in lines[6:]:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith('|'):
+            parts = [p.strip() for p in line.split('|')[1:-1]]
+            if len(parts) == 6: # Expecting 6 columns based on result.md
+                try:
+                    compressor_name = parts[0]
+                    # Extract speed values, removing " MB/s"
+                    comp_speed_str = parts[1].replace(' MB/s', '').strip()
+                    decomp_speed_str = parts[2].replace(' MB/s', '').strip()
+                    # Handle potential non-numeric values gracefully
+                    comp_speed = float(comp_speed_str) if comp_speed_str else 0.0
+                    decomp_speed = float(decomp_speed_str) if decomp_speed_str else 0.0
+                    ratio = 100 / float(parts[4])
+
+                    # Extract base compressor name (e.g., 'lz4' from 'lz4 1.10.0')
+                    base_compressor = ' '.join(compressor_name.split(' ')[0:2])
+
+                    data.append({
+                        'Compressor': compressor_name,
+                        'BaseCompressor': base_compressor,
+                        'CompressionSpeed': comp_speed,
+                        'DecompressionSpeed': decomp_speed,
+                        'Ratio': ratio
+                    })
+                except (ValueError, IndexError) as e:
+                    print(f"Skipping malformed line: {line} - Error: {e}")
+                    continue
+    if not data:
+        print("Error: No data parsed from the file.")
+        return None
+
+    return pd.DataFrame(data)
+
+def plot_comp_vs_ratio(df, output_filename="comp_ratio.png"):
+    """Generates a scatter plot from the parsed lzbench results."""
+    if df is None or df.empty:
+        print("No data available to plot.")
+        return
+
+    plt.figure(figsize=(12, 8))
+
+    # Define markers and colors for different compressors
+    compressors = df['BaseCompressor'].unique()
+    markers = ['o', 's', '^', 'D', 'v', '>', '<', 'p', '*', 'h', '+', 'x']
+    colors = matplotlib.colormaps['tab10']
+
+    compressor_map = {name: (markers[i % len(markers)], colors(i))
+                      for i, name in enumerate(compressors)}
+
+    for compressor, group in df.groupby('BaseCompressor'):
+        marker, color = compressor_map[compressor]
+        # Sort points by CompressionSpeed to make the line plot meaningful
+        group = group.sort_values('CompressionSpeed')
+        plt.plot(group['CompressionSpeed'], group['Ratio'],
+                 label=compressor, marker=marker, color=color, linestyle='-', markersize=7, alpha=0.8)
+
+    plt.title('Compression Speed vs Ratio')
+    plt.xlabel('Compression Speed (MB/s)')
+    plt.ylabel('Compression Ratio')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.legend(title="Compressor", loc='upper right')
+
+    plt.savefig(output_filename)
+    print(f"Plot saved to {output_filename}")
+    # plt.show() # Uncomment to display the plot directly
+
+def plot_decomp_vs_ratio(df, output_filename="decomp_ratio.png"):
+    """Generates a scatter plot from the parsed lzbench results."""
+    if df is None or df.empty:
+        print("No data available to plot.")
+        return
+
+    plt.figure(figsize=(12, 8))
+
+    # Define markers and colors for different compressors
+    compressors = df['BaseCompressor'].unique()
+    markers = ['o', 's', '^', 'D', 'v', '>', '<', 'p', '*', 'h', '+', 'x']
+    colors = matplotlib.colormaps['tab10']
+
+    compressor_map = {name: (markers[i % len(markers)], colors(i))
+                      for i, name in enumerate(compressors)}
+
+    for compressor, group in df.groupby('BaseCompressor'):
+        marker, color = compressor_map[compressor]
+        # Sort points by CompressionSpeed to make the line plot meaningful
+        group = group.sort_values('CompressionSpeed')
+        plt.plot(group['DecompressionSpeed'], group['Ratio'],
+                 label=compressor, marker=marker, color=color, linestyle='-', markersize=7, alpha=0.8)
+
+    plt.title('Decompression Speed vs Compression Ratio')
+    plt.xlabel('Decompression Speed (MB/s)')
+    plt.ylabel('Compression Ratio')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.legend(title="Compressor", loc='upper right')
+
+    plt.savefig(output_filename)
+    print(f"Plot saved to {output_filename}")
+    # plt.show() # Uncomment to display the plot directly
+
+if __name__ == "__main__":
+    # Determine the absolute path to result.md relative to the script's location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    result_md_path = os.path.join(script_dir, 'result.md')
+    output_plot_path = os.path.join(script_dir, 'lzbench_plot.png') # Save in lzbench dir
+
+    df_results = parse_lzbench_results(result_md_path)
+    if df_results is not None:
+        # plot_results(df_results, output_plot_path)
+        plot_comp_vs_ratio(df_results, output_filename=os.path.join(script_dir, 'comp_ratio.png'))
+        plot_decomp_vs_ratio(df_results, output_filename=os.path.join(script_dir, 'decomp_ratio.png'))
