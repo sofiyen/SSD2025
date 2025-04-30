@@ -1,7 +1,20 @@
 # Assignment 1
 
+## Rootkit Module
+
+This module uses Kprobes module of Linux, so to load and run this module you should compile the guest OS with Kprobes enabled.
+
+```sh
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+# Enable Kprobes and Kprobe events
+scripts/config --enable CONFIG_KPROBES
+scripts/config --enable CONFIG_KPROBE_EVENTS
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc)
+```
+
 ## Test
 
-Please `make` on **host** in `test/` to build the test tools, because the guest doesn't have the ability to compile.
+Please run test on **guest** machine. To run the test you must have `gcc` and `make` installed. 
+1. `insmod path/to/rootkit.ko`
+2. run `test/test.sh` to test the module.
 
-Run `test/test.sh` on **guest** to test the module. You should be able to run the script in any directory. If you failed to run the script, please `cd` to `test` directory before running the script.
