@@ -1,0 +1,135 @@
+diff --git a/linux/include/linux/syscalls.h b/linux/include/linux/syscalls.h
+index a34b0f9a9..303d0d402 100644
+--- a/linux/include/linux/syscalls.h
++++ b/linux/include/linux/syscalls.h
+@@ -71,6 +71,7 @@ struct clone_args;
+ struct open_how;
+ struct mount_attr;
+ struct landlock_ruleset_attr;
++struct expose_pgtbl_args;
+ enum landlock_rule_type;
+ 
+ #include <linux/types.h>
+@@ -1269,6 +1270,7 @@ asmlinkage long sys_mmap_pgoff(unsigned long addr, unsigned long len,
+ 			unsigned long fd, unsigned long pgoff);
+ asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
+ 
++asmlinkage long sys_remap_page_table(struct expose_pgtbl_args __user *arg);
+ 
+ /*
+  * Not a real system call, but a placeholder for syscalls which are
+diff --git a/linux/include/uapi/asm-generic/unistd.h b/linux/include/uapi/asm-generic/unistd.h
+index 45fa180cc..ddb48fd54 100644
+--- a/linux/include/uapi/asm-generic/unistd.h
++++ b/linux/include/uapi/asm-generic/unistd.h
+@@ -886,8 +886,11 @@ __SYSCALL(__NR_futex_waitv, sys_futex_waitv)
+ #define __NR_set_mempolicy_home_node 450
+ __SYSCALL(__NR_set_mempolicy_home_node, sys_set_mempolicy_home_node)
+ 
++#define __NR_remap_page_table 451
++__SYSCALL(__NR_remap_page_table, sys_remap_page_table)
++
+ #undef __NR_syscalls
+-#define __NR_syscalls 451
++#define __NR_syscalls 452
+ 
+ /*
+  * 32 bit systems traditionally used different
+diff --git a/linux/kernel/sys.c b/linux/kernel/sys.c
+index 5fd54bf0e..e42fd823e 100644
+--- a/linux/kernel/sys.c
++++ b/linux/kernel/sys.c
+@@ -2791,3 +2791,81 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
+ 	return 0;
+ }
+ #endif /* CONFIG_COMPAT */
++
++struct expose_pgtbl_args {
++	// PID of the target task
++	pid_t pid;
++	// User-space virtual address to map the page table page
++	unsigned long remap_vaddr;
++	// Physical frame number from the previous level page table entry
++	unsigned long pfn;
++	// page table level (0: PGD, 1: PUD, 2: PMD, 3: PTE)
++	unsigned int level;
++};
++
++/* This syscall exposes the target process's page table page to the
++ * current process's address space.
++ */
++SYSCALL_DEFINE1(remap_page_table, struct expose_pgtbl_args __user *, args)
++{	
++	struct task_struct *target_task;
++	struct mm_struct *mm;
++	struct vm_area_struct *vma;
++	int err;
++
++	if (args->level > 3 || args->level < 0)
++		// level is out of range
++		return -EINVAL;
++
++	// Get the target page frame to map
++	if (args->level != 0) {
++		// In this case, simply map the page frame
++		if (!pfn_valid(args->pfn)) {
++			// pfn is invalid
++			return -EINVAL;
++		}
++	} else {
++		// In this case, we find the page frame of the page table of the target task
++		rcu_read_lock();
++		target_task = find_task_by_vpid(args->pid);
++		if (!target_task) {
++			// Target PID does not exist.
++			rcu_read_unlock();
++			return -EINVAL;
++		}
++		get_task_struct(target_task);
++		rcu_read_unlock();
++
++		// set pfn to the level 0 page table page
++		args->pfn = virt_to_phys(target_task->mm->pgd) >> PAGE_SHIFT;
++		put_task_struct(target_task);
++	}
++
++	if (!IS_ALIGNED(args->remap_vaddr, PAGE_SIZE))
++		// remap_vaddr is not page-aligned
++		return -EINVAL;
++
++	get_task_struct(current);
++	mm = get_task_mm(current);
++	if (!mm)
++		return -ESRCH;
++
++	down_write(&mm->mmap_lock);
++
++	// Find the VMA where the remap_vaddr is located
++	vma = find_vma(mm, args->remap_vaddr);
++	if (!vma) {
++		up_write(&mm->mmap_lock);
++		mmput(mm);
++		put_task_struct(current);
++		return -EINVAL;
++	}
++
++	err = remap_pfn_range(vma, args->remap_vaddr, args->pfn, PAGE_SIZE, vma->vm_page_prot);
++
++	up_write(&mm->mmap_lock);
++	mmput(mm);
++	put_task_struct(current);
++
++	return err;
++}
+\ No newline at end of file
+diff --git a/linux/kernel/sys_ni.c b/linux/kernel/sys_ni.c
+index 860b2dcf3..1251c9bee 100644
+--- a/linux/kernel/sys_ni.c
++++ b/linux/kernel/sys_ni.c
+@@ -479,3 +479,5 @@ COND_SYSCALL(setuid16);
+ 
+ /* restartable sequence */
+ COND_SYSCALL(rseq);
++
++COND_SYSCALL(remap_page_table);
+\ No newline at end of file
