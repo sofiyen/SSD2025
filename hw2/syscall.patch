@@ -1,7 +1,7 @@
-diff --git a/linux/include/linux/syscalls.h b/linux/include/linux/syscalls.h
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
 index a34b0f9a9..303d0d402 100644
---- a/linux/include/linux/syscalls.h
-+++ b/linux/include/linux/syscalls.h
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
 @@ -71,6 +71,7 @@ struct clone_args;
  struct open_how;
  struct mount_attr;
@@ -18,10 +18,10 @@ index a34b0f9a9..303d0d402 100644
  
  /*
   * Not a real system call, but a placeholder for syscalls which are
-diff --git a/linux/include/uapi/asm-generic/unistd.h b/linux/include/uapi/asm-generic/unistd.h
+diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
 index 45fa180cc..ddb48fd54 100644
---- a/linux/include/uapi/asm-generic/unistd.h
-+++ b/linux/include/uapi/asm-generic/unistd.h
+--- a/include/uapi/asm-generic/unistd.h
++++ b/include/uapi/asm-generic/unistd.h
 @@ -886,8 +886,11 @@ __SYSCALL(__NR_futex_waitv, sys_futex_waitv)
  #define __NR_set_mempolicy_home_node 450
  __SYSCALL(__NR_set_mempolicy_home_node, sys_set_mempolicy_home_node)
@@ -35,10 +35,10 @@ index 45fa180cc..ddb48fd54 100644
  
  /*
   * 32 bit systems traditionally used different
-diff --git a/linux/kernel/sys.c b/linux/kernel/sys.c
-index 5fd54bf0e..e42fd823e 100644
---- a/linux/kernel/sys.c
-+++ b/linux/kernel/sys.c
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 5fd54bf0e..4e813c07d 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
 @@ -2791,3 +2791,81 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
  	return 0;
  }
@@ -100,7 +100,7 @@ index 5fd54bf0e..e42fd823e 100644
 +	get_task_struct(current);
 +	mm = get_task_mm(current);
 +	if (!mm)
-+		return -ESRCH;
++		return -EINVAL;
 +
 +	down_write(&mm->mmap_lock);
 +
@@ -121,11 +121,10 @@ index 5fd54bf0e..e42fd823e 100644
 +
 +	return err;
 +}
-\ No newline at end of file
-diff --git a/linux/kernel/sys_ni.c b/linux/kernel/sys_ni.c
+diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
 index 860b2dcf3..1251c9bee 100644
---- a/linux/kernel/sys_ni.c
-+++ b/linux/kernel/sys_ni.c
+--- a/kernel/sys_ni.c
++++ b/kernel/sys_ni.c
 @@ -479,3 +479,5 @@ COND_SYSCALL(setuid16);
  
  /* restartable sequence */

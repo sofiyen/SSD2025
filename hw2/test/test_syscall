@@ -1,0 +1,86 @@
+#!/bin/bash
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NO_COLOR='\033[0m'
+
+test_remap_other_task() {
+    echo "===== Remap Other Task Test ============"
+    # Ensure remap_other_task exists
+    if [ -f "./syscall_test" ]; then
+        vim > /dev/null 2>&1 &
+        disown
+        VIM_PID=$!
+
+        ./syscall_test $VIM_PID > /dev/null
+
+        ret=$?
+        if [ $ret -eq 0 ]; then
+            echo -e "${GREEN}Passed${NO_COLOR}"
+        else
+            echo -e "${RED}Failed${NO_COLOR}"
+        fi
+        return $ret
+    else
+        echo "./syscall_test file does not exist. Please compile it first."
+        return 1
+    fi
+
+    echo -e "${GREEN}Passed${NO_COLOR}"
+    return 0
+}
+
+test_transparent() {
+    echo "===== Transparent Test ================="
+    # Ensure remap_other_task exists
+    if [ -f "./syscall_test" ]; then
+        ./syscall_test -1 | grep see > /dev/null
+    else
+        echo "./syscall_test file does not exist. Please compile it first."
+        return 1
+    fi
+
+    ret=$?
+    if [ $ret -eq 0 ]; then
+        echo -e "${GREEN}Passed${NO_COLOR}"
+    else
+        echo -e "${RED}Failed${NO_COLOR}"
+    fi
+    return $ret
+}
+
+# Set pwd to the directory of this script
+echo "===== Assignment 1 Test ================"
+cd "$(dirname "$0")"
+echo "Testing directory: $(pwd)"
+
+echo "===== Build Test Programs =============="
+make
+
+if [ $? -ne 0 ]; then
+    echo "Make failed."
+    exit 1
+fi
+
+test_remap_other_task
+TEST1_RESULT=$?
+
+test_transparent
+TEST2_RESULT=$?
+
+
+echo "===== Result ==========================="
+
+if [ $TEST1_RESULT -eq 0 ]; then
+    echo -e "${GREEN}Remap Other Task Test passed.${NO_COLOR}"
+else
+    echo -e "${RED}Remap Other Task Test failed.${NO_COLOR}"
+fi
+
+if [ $TEST2_RESULT -eq 0 ]; then
+    echo -e "${GREEN}Transparent Test passed.${NO_COLOR}"
+else
+    echo -e "${RED}Transparent Test failed.${NO_COLOR}"
+fi
+
+exit 0
