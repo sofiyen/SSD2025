@@ -19,7 +19,7 @@ static struct pt_cache_entry *cache_head = NULL;
 
 void cache_insert(unsigned long pfn, int level, void *va, unsigned long id_va) {
     if(level == 3){
-        printf("[cache] inserted PTE page table: va for index = 0x%lx\n", id_va);
+        fprintf(stderr, "[cache] inserted PTE page table: va for index = 0x%lx\n", id_va);
     }
     struct pt_cache_entry *entry = malloc(sizeof(struct pt_cache_entry));
     if (!entry) {
@@ -37,11 +37,11 @@ void cache_insert(unsigned long pfn, int level, void *va, unsigned long id_va) {
 void *cache_lookup(unsigned long pfn, int level) {
     for (struct pt_cache_entry *cur = cache_head; cur; cur = cur->next) {
         if (cur->pfn == pfn && cur->level == level) {
-            printf("Cache hit: pfn=0x%lx, level=%d, va=%p\n", pfn, level, cur->user_va);
+            fprintf(stderr, "Cache hit: pfn=0x%lx, level=%d, va=%p\n", pfn, level, cur->user_va);
             return cur->user_va;
         }
     }
-    printf("Cache miss: pfn=0x%lx, level=%d\n", pfn, level);
+    fprintf(stderr, "Cache miss: pfn=0x%lx, level=%d\n", pfn, level);
     return NULL;
 }
 
@@ -50,7 +50,7 @@ void cache_cleanup(void) {
     int count = 0;
     struct pt_cache_entry *cur = cache_head;
     while (cur) {
-        printf("Freeing cache entry: pfn=0x%lx, level=%d, va=%p\n", 
+        fprintf(stderr, "Freeing cache entry: pfn=0x%lx, level=%d, va=%p\n", 
                cur->pfn, cur->level, cur->user_va);
         
         if(cur->level == 3){
@@ -64,6 +64,6 @@ void cache_cleanup(void) {
         free(tmp);
         count++;
     }
-    printf("Cleaned up %d cache entries\n", count);
+    fprintf(stderr, "Cleaned up %d cache entries\n", count);
     cache_head = NULL;
 }

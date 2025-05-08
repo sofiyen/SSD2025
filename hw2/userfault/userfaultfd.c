@@ -200,11 +200,11 @@ int map_fault_va_to_pa(unsigned long va, unsigned long pa) {
             // not valid
             if (level == LEVEL_PTE) {
                 // write PA to entry
-                print_binary(pa);
-		print_binary((pa & ~(PAGE_SIZE-1)) | PTE_FLAGS );
-		uint64_t new_entry = pa; //(pa & ~(PAGE_SIZE - 1)) | PTE_FLAGS; 
-                table[index] = new_entry;
-		print_binary(table[index]);
+                // print_binary(pa);
+                // print_binary((pa & ~(PAGE_SIZE-1)) | PTE_FLAGS );
+                uint64_t new_entry = pa; //(pa & ~(PAGE_SIZE - 1)) | PTE_FLAGS; 
+                        table[index] = new_entry;
+                // print_binary(table[index]);
                 if (table[index] != new_entry) {
                     fprintf(stderr, "write to PTE failed silently...\n");
                 }

@@ -30,3 +30,12 @@ In your new kernel, run the following command perform the tests:
 ```sh
 test/test_syscall
 ```
+
+## Testing userfault
+- Inside VM run by modified kernel :
+```bash
+make clean
+make
+./userfault
+```
+- Expected Result :
