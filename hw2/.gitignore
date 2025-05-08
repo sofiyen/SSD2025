@@ -1,1 +1,3 @@
 linux/
+cscope*
+run-vm.sh

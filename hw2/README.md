@@ -14,6 +14,7 @@ Then, you configure the kernel with the following options:
 make defconfig
 scripts/config -e CONFIG_USERFAULTFD
 scripts/config -d CONFIG_TRANSPARENT_HUGEPAGE
+make olddefconfig
 ```
 
 After that, you can build the kernel with the following command:
