@@ -36,6 +36,5 @@ test/test_syscall
 ```bash
 make clean
 make
-./userfault
+./userfault 2>/dev/null
 ```
-- Expected Result :
