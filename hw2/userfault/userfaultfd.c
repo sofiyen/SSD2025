@@ -102,7 +102,7 @@ unsigned long va_to_pa(unsigned long va) {
     unsigned long *pt_va = NULL; // page table pointer
 
     // Step 1: Remap PGD if needed
-    pt_va = cache_lookup(pfn, LEVEL_PGD);
+    pt_va = cache_lookup(pfn, LEVEL_PGD, va, 0);
     if (!pt_va) {
         pt_va = mmap(NULL, PAGE_SIZE, PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
         if (pt_va == MAP_FAILED) {
@@ -116,7 +116,7 @@ unsigned long va_to_pa(unsigned long va) {
             // munmap(pt_va, PAGE_SIZE);
             return 0;
         }
-        cache_insert(0, LEVEL_PGD, pt_va, va);
+        cache_insert(0, LEVEL_PGD, pt_va, va, 0);
     }
 
     for (level = 0; level < 4; ++level) {
@@ -132,7 +132,7 @@ unsigned long va_to_pa(unsigned long va) {
 
         if (level < LEVEL_PTE) {
             // obtain next level page table
-            pt_va = cache_lookup(pfn, level + 1);
+            pt_va = cache_lookup(pfn, level + 1, va, 0);
             if (!pt_va) {
                 pt_va = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
                 if (pt_va == MAP_FAILED) {
@@ -146,7 +146,7 @@ unsigned long va_to_pa(unsigned long va) {
                     // munmap(pt_va, PAGE_SIZE);
                     return 0;
                 }
-                cache_insert(pfn, level + 1, pt_va, va);
+                cache_insert(pfn, level + 1, pt_va, va, 0);
             }
         } else {
             // Leaf entry, return physical address
@@ -174,7 +174,7 @@ int map_fault_va_to_pa(unsigned long va, unsigned long pa) {
     void *pt_va = NULL;
 
     // Step 1: Remap PGD if needed
-    pt_va = cache_lookup(pfn, LEVEL_PGD);
+    pt_va = cache_lookup(pfn, LEVEL_PGD, va, 1);
     if (!pt_va) {
         pt_va = mmap(NULL, PAGE_SIZE, PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
         if (pt_va == MAP_FAILED) {
@@ -188,7 +188,7 @@ int map_fault_va_to_pa(unsigned long va, unsigned long pa) {
             // munmap(pt_va, PAGE_SIZE);
             return -1;
         }
-        cache_insert(0, LEVEL_PGD, pt_va, va);
+        cache_insert(0, LEVEL_PGD, pt_va, va, 1);
     }
 
     for (level = 0; level < 4; ++level) {
@@ -220,7 +220,7 @@ int map_fault_va_to_pa(unsigned long va, unsigned long pa) {
 
         if (level < LEVEL_PTE) {
             // get next level page table
-            pt_va = cache_lookup(pfn, level + 1);
+            pt_va = cache_lookup(pfn, level + 1, va, 1);
             if (!pt_va) {
                 pt_va = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
                 if (pt_va == MAP_FAILED) {
@@ -234,7 +234,7 @@ int map_fault_va_to_pa(unsigned long va, unsigned long pa) {
                     // munmap(pt_va, PAGE_SIZE);
                     return -1;
                 }
-                cache_insert(pfn, level + 1, pt_va, va);
+                cache_insert(pfn, level + 1, pt_va, va, 1);
             }
         } else {
             // already mapped, do not override

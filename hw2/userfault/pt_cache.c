@@ -11,13 +11,14 @@ struct pt_cache_entry {
     unsigned long pfn;
     int level;
     void *user_va;
-    unsigned long search_va;
+    unsigned long search_va[10];
     struct pt_cache_entry *next;
+    int count;
 };
 
 static struct pt_cache_entry *cache_head = NULL;
 
-void cache_insert(unsigned long pfn, int level, void *va, unsigned long id_va) {
+void cache_insert(unsigned long pfn, int level, void *va, unsigned long id_va, int t) {
     if(level == 3){
         fprintf(stderr, "[cache] inserted PTE page table: va for index = 0x%lx\n", id_va);
     }
@@ -28,16 +29,29 @@ void cache_insert(unsigned long pfn, int level, void *va, unsigned long id_va) {
     }
     entry->pfn = pfn;
     entry->level = level;
-    entry->user_va = va;
-    entry->search_va = id_va;
+    entry->user_va = va; 
+    entry->count = 0;
+    if (t) {
+        entry->search_va[entry->count] = id_va;
+        entry->count++;
+    }
     entry->next = cache_head;
     cache_head = entry;
 }
 
-void *cache_lookup(unsigned long pfn, int level) {
+void *cache_lookup(unsigned long pfn, int level, unsigned long va, int t) {
     for (struct pt_cache_entry *cur = cache_head; cur; cur = cur->next) {
         if (cur->pfn == pfn && cur->level == level) {
-            fprintf(stderr, "Cache hit: pfn=0x%lx, level=%d, va=%p\n", pfn, level, cur->user_va);
+            if (!t)
+                return cur->user_va;
+            for (int i = 0; i < cur->count; i++)
+                if (cur->search_va[i] == va)
+                    return cur->user_va;
+            if (cur->level == 3) {
+                cur->search_va[cur->count] = va;
+                cur->count++;
+            }
+            fprintf(stderr, "Cache hit: pfn=0x%lx, level=%d, va=%p, id_va=%p\n", pfn, level, cur->user_va, va);
             return cur->user_va;
         }
     }
@@ -54,9 +68,11 @@ void cache_cleanup(void) {
                cur->pfn, cur->level, cur->user_va);
         
         if(cur->level == 3){
-            unsigned long index = (cur->search_va >> shifts[cur->level]) & BIT_MASK;
-            uint64_t *table = (uint64_t *)cur->user_va;
-            table[index] = 0;
+            for (int i = 0; i < cur->count; i++) {
+                unsigned long index = (cur->search_va[i] >> shifts[cur->level]) & BIT_MASK;
+                uint64_t *table = (uint64_t *)cur->user_va;
+                table[index] = 0;
+            }
         }
         munmap(cur->user_va, PAGE_SIZE);
         struct pt_cache_entry *tmp = cur;
