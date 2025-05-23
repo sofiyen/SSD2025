@@ -39,6 +39,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo "Setting dynamic threshold to 30%"
+echo 30 > /sys/block/zram0/dynamic_threshold
+if [ $? -ne 0 ]; then
+    echo "Failed to set dynamic threshold."
+    exit 1
+fi
+
 echo "Setting zram size to 32G"
 echo 32G > /sys/block/zram0/disksize
 if [ $? -ne 0 ]; then
