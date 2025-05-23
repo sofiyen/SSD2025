@@ -1,2 +1,2 @@
 #!/bin/sh
-lzbench -elzo1x/lz4/lz4hc/zstd -t8,8 -o1 -j -r silesia/ > result.md
+lzbench -elzo1x/lz4/lz4hc/zstd/libdeflate -t8,8 -o1 -j -r silesia/ > result.md
