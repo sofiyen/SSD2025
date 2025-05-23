@@ -144,3 +144,13 @@ config ZRAM_MULTI_COMP
 	  re-compress pages using a potentially slower but more effective
 	  compression algorithm. Note, that IDLE page recompression
 	  requires ZRAM_TRACK_ENTRY_ACTIME.
+
+config ZRAM_DYNAMIC_COMP
+	bool "Enable dynamic compression streams"
+	depends on ZRAM_MULTI_COMP
+	help
+	  This will leverage the multi-compression streams to dynamically
+	  change the compression algorithm used for a page. This will
+	  allow ZRAM to compress pages using the stream with highest
+	  priority value, when the physical memory usage is over a
+	  certain threshold.

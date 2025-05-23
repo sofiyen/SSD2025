@@ -1497,7 +1497,12 @@ static int zram_write_page(struct zram *zram, struct page *page, u32 index)
 	int ret = 0;
 	unsigned long alloced_pages;
 	unsigned long handle = -ENOMEM;
+#ifdef CONFIG_ZRAM_DYNAMIC_COMP
+	unsigned long mem_usage = 0;
+	unsigned long threshold = 30;
+#endif
 	unsigned int comp_len = 0;
+	unsigned int prio = ZRAM_PRIMARY_COMP;
 	void *src, *dst, *mem;
 	struct zcomp_strm *zstrm;
 	unsigned long element = 0;
@@ -1514,18 +1519,34 @@ static int zram_write_page(struct zram *zram, struct page *page, u32 index)
 	kunmap_local(mem);
 
 compress_again:
-	zstrm = zcomp_stream_get(zram->comps[ZRAM_PRIMARY_COMP]);
+#ifdef CONFIG_ZRAM_DYNAMIC_COMP
+	mem_usage = zs_get_total_pages(zram->mem_pool) * 100 / (zram->limit_pages ?
+			zram->limit_pages : totalram_pages());
+	pr_info("memory usage %lu%%\n", mem_usage);
+	if (mem_usage > threshold) {
+		for (prio = ZRAM_MAX_COMPS - 1; prio > ZRAM_PRIMARY_COMP; prio--) {
+			if (zram->comps[prio]) 
+				break;
+		}
+		if (prio == 0) 
+			pr_warn("No secondary compression stream available\n");
+	}
+#endif
+	zstrm = zcomp_stream_get(zram->comps[prio]);
 	src = kmap_local_page(page);
-	ret = zcomp_compress(zram->comps[ZRAM_PRIMARY_COMP], zstrm,
+	ret = zcomp_compress(zram->comps[prio], zstrm,
 			     src, &comp_len);
 	kunmap_local(src);
 
 	if (unlikely(ret)) {
-		zcomp_stream_put(zram->comps[ZRAM_PRIMARY_COMP]);
+		zcomp_stream_put(zram->comps[prio]);
 		pr_err("Compression failed! err=%d\n", ret);
 		zs_free(zram->mem_pool, handle);
 		return ret;
 	}
+
+	pr_info("Compressed page %u with %s\n, ratio = %lu%%",
+		index, zram->comp_algs[prio], comp_len * 100 / PAGE_SIZE);
 
 	if (comp_len >= huge_class_size)
 		comp_len = PAGE_SIZE;
@@ -1549,7 +1570,7 @@ compress_again:
 				__GFP_HIGHMEM |
 				__GFP_MOVABLE);
 	if (IS_ERR_VALUE(handle)) {
-		zcomp_stream_put(zram->comps[ZRAM_PRIMARY_COMP]);
+		zcomp_stream_put(zram->comps[prio]);
 		atomic64_inc(&zram->stats.writestall);
 		handle = zs_malloc(zram->mem_pool, comp_len,
 				GFP_NOIO | __GFP_HIGHMEM |
@@ -1566,14 +1587,14 @@ compress_again:
 		 * zstrm buffer back. It is necessary that the dereferencing
 		 * of the zstrm variable below occurs correctly.
 		 */
-		zstrm = zcomp_stream_get(zram->comps[ZRAM_PRIMARY_COMP]);
+		zstrm = zcomp_stream_get(zram->comps[prio]);
 	}
 
 	alloced_pages = zs_get_total_pages(zram->mem_pool);
 	update_used_max(zram, alloced_pages);
 
 	if (zram->limit_pages && alloced_pages > zram->limit_pages) {
-		zcomp_stream_put(zram->comps[ZRAM_PRIMARY_COMP]);
+		zcomp_stream_put(zram->comps[prio]);
 		zs_free(zram->mem_pool, handle);
 		return -ENOMEM;
 	}
@@ -1587,7 +1608,7 @@ compress_again:
 	if (comp_len == PAGE_SIZE)
 		kunmap_local(src);
 
-	zcomp_stream_put(zram->comps[ZRAM_PRIMARY_COMP]);
+	zcomp_stream_put(zram->comps[prio]);
 	zs_unmap_object(zram->mem_pool, handle);
 	atomic64_add(comp_len, &zram->stats.compr_data_size);
 out:
@@ -1610,6 +1631,7 @@ out:
 	}  else {
 		zram_set_handle(zram, index, handle);
 		zram_set_obj_size(zram, index, comp_len);
+		zram_set_priority(zram, index, prio);
 	}
 	zram_slot_unlock(zram, index);
 
