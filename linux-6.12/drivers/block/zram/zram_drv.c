@@ -263,6 +263,29 @@ static ssize_t mem_limit_store(struct device *dev,
 	return len;
 }
 
+static ssize_t dynamic_threshold_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t len)
+{
+	u64 threshold;
+	char *tmp;
+	struct zram *zram = dev_to_zram(dev);
+
+	threshold = memparse(buf, &tmp);
+	if (buf == tmp) /* no chars parsed, invalid input */
+		return -EINVAL;
+
+	if (threshold > 100 || threshold < 0)
+		return -EINVAL;
+
+	down_write(&zram->init_lock);
+	zram->dynamic_threshold = threshold;
+	up_write(&zram->init_lock);
+
+	pr_info("Dynamic compression threshold set to %llu\n", threshold);
+
+	return len;
+}
+
 static ssize_t mem_used_max_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
@@ -1499,7 +1522,6 @@ static int zram_write_page(struct zram *zram, struct page *page, u32 index)
 	unsigned long handle = -ENOMEM;
 #ifdef CONFIG_ZRAM_DYNAMIC_COMP
 	unsigned long mem_usage = 0;
-	unsigned long threshold = 30;
 #endif
 	unsigned int comp_len = 0;
 	unsigned int prio = ZRAM_PRIMARY_COMP;
@@ -1523,7 +1545,7 @@ compress_again:
 	mem_usage = zs_get_total_pages(zram->mem_pool) * 100 / (zram->limit_pages ?
 			zram->limit_pages : totalram_pages());
 	pr_info("memory usage %lu%%\n", mem_usage);
-	if (mem_usage > threshold) {
+	if (zram->dynamic_threshold && mem_usage >= zram->dynamic_threshold) {
 		for (prio = ZRAM_MAX_COMPS - 1; prio > ZRAM_PRIMARY_COMP; prio--) {
 			if (zram->comps[prio]) 
 				break;
@@ -2152,6 +2174,7 @@ static void zram_reset_device(struct zram *zram)
 	down_write(&zram->init_lock);
 
 	zram->limit_pages = 0;
+	zram->dynamic_threshold = 0;
 
 	if (!init_done(zram)) {
 		up_write(&zram->init_lock);
@@ -2292,6 +2315,7 @@ static DEVICE_ATTR_RW(disksize);
 static DEVICE_ATTR_RO(initstate);
 static DEVICE_ATTR_WO(reset);
 static DEVICE_ATTR_WO(mem_limit);
+static DEVICE_ATTR_WO(dynamic_threshold);
 static DEVICE_ATTR_WO(mem_used_max);
 static DEVICE_ATTR_WO(idle);
 static DEVICE_ATTR_RW(max_comp_streams);
@@ -2314,6 +2338,7 @@ static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_reset.attr,
 	&dev_attr_compact.attr,
 	&dev_attr_mem_limit.attr,
+	&dev_attr_dynamic_threshold.attr,
 	&dev_attr_mem_used_max.attr,
 	&dev_attr_idle.attr,
 	&dev_attr_max_comp_streams.attr,

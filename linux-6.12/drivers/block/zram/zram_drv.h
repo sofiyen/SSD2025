@@ -114,6 +114,10 @@ struct zram {
 	 * the number of pages zram can consume for storing compressed data
 	 */
 	unsigned long limit_pages;
+	/*
+	 * the memory usage threshold for dynamic compression (0-100)
+	 */
+	unsigned long dynamic_threshold;
 
 	struct zram_stats stats;
 	/*
