@@ -1402,6 +1402,7 @@ static void zram_free_page(struct zram *zram, size_t index)
 
 	atomic64_sub(zram_get_obj_size(zram, index),
 			&zram->stats.compr_data_size);
+	atomic64_dec(&zram->stats.alo_pages[zram_get_priority(zram, index)]);
 out:
 	atomic64_dec(&zram->stats.pages_stored);
 	zram_set_handle(zram, index, 0);
@@ -1633,6 +1634,7 @@ compress_again:
 	zcomp_stream_put(zram->comps[prio]);
 	zs_unmap_object(zram->mem_pool, handle);
 	atomic64_add(comp_len, &zram->stats.compr_data_size);
+	atomic64_inc(&zram->stats.alo_pages[prio]);
 out:
 	/*
 	 * Free memory associated with this sector
@@ -1837,6 +1839,7 @@ static int zram_recompress(struct zram *zram, u32 index, struct page *page,
 	zram_set_priority(zram, index, prio);
 
 	atomic64_add(comp_len_new, &zram->stats.compr_data_size);
+	atomic64_inc(&zram->stats.alo_pages[prio]);
 	atomic64_inc(&zram->stats.pages_stored);
 
 	return 0;

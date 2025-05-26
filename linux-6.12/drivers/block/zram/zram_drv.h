@@ -73,6 +73,17 @@ struct zram_table_entry {
 #endif
 };
 
+
+#ifdef CONFIG_ZRAM_MULTI_COMP
+#define ZRAM_PRIMARY_COMP	0U
+#define ZRAM_SECONDARY_COMP	1U
+#define ZRAM_MAX_COMPS	4U
+#else
+#define ZRAM_PRIMARY_COMP	0U
+#define ZRAM_SECONDARY_COMP	0U
+#define ZRAM_MAX_COMPS	1U
+#endif
+
 struct zram_stats {
 	atomic64_t compr_data_size;	/* compressed size of pages stored */
 	atomic64_t failed_reads;	/* can happen when memory is too low */
@@ -85,22 +96,13 @@ struct zram_stats {
 	atomic_long_t max_used_pages;	/* no. of maximum pages stored */
 	atomic64_t writestall;		/* no. of write slow paths */
 	atomic64_t miss_free;		/* no. of missed free */
+	atomic64_t alo_pages[ZRAM_MAX_COMPS]; /* no. of pages compressed by each algorithm */
 #ifdef	CONFIG_ZRAM_WRITEBACK
 	atomic64_t bd_count;		/* no. of pages in backing device */
 	atomic64_t bd_reads;		/* no. of reads from backing device */
 	atomic64_t bd_writes;		/* no. of writes from backing device */
 #endif
 };
-
-#ifdef CONFIG_ZRAM_MULTI_COMP
-#define ZRAM_PRIMARY_COMP	0U
-#define ZRAM_SECONDARY_COMP	1U
-#define ZRAM_MAX_COMPS	4U
-#else
-#define ZRAM_PRIMARY_COMP	0U
-#define ZRAM_SECONDARY_COMP	0U
-#define ZRAM_MAX_COMPS	1U
-#endif
 
 struct zram {
 	struct zram_table_entry *table;
