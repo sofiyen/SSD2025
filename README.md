@@ -33,6 +33,23 @@ benchmark
     ├── plot.py : 根據不同 workload，plot ../all_benchmarks.summary.csv。
     └── run_benchmark.sh : 主要的 shell script，用來跑一個 workload + algorithm 組合。
 ```
-### Benchmarks
+## Stage 2 : Implementation + Final Benchmark Design
 
-### Benchmark Conditions
+To run the benchmark:
+
+⚠️ **Remember that `install_zram.sh` and all files under `benchmark/` should be under `/root/final/` inside the VM.**
+
+1. Set compression mode in `run.sh` :
+    - dynamic
+    - lz4
+    - zstd
+2. Create result directory :
+    ```bash
+    cd /root/final
+    mkdir -P logs/{dynamic,lz4,zstd}
+    ```
+3. Run :
+    ```bash
+    bash run.sh
+    ```
+
