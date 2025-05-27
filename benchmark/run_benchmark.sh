@@ -1,26 +1,28 @@
 #!/bin/bash
 
+MODE=$1
 echo "Clean-up before benchmarking..."
 
 swapoff /dev/zram0
 echo 1 > /sys/block/zram0/reset
-bash /root/final/install_zram.sh
+echo 3 | sudo tee /proc/sys/vm/drop_caches
+bash /root/final/install_zram.sh $MODE
 if [ $? -ne 0 ]; then
     echo "install_zram.sh failed, exiting."
     exit 1
 fi
 pkill -f /root/final/benchmark_worker
 rm -rf /root/final/benchmark_worker
-
 gcc -o benchmark_worker benchmark_worker.c
 
 echo "Clean-up DONE!"
 
+
 PROCESS_COUNT=6
-ACTIVE_RATIO=20 # 20 / 80
+ACTIVE_RATIO=5 # out of 100
 OOM_DETECTED=0
 
-LOG_FILE="benchmark_log_$(date +%Y%m%d_%H%M%S).txt"
+LOG_FILE="/root/final/logs/$MODE/$(date +%Y%m%d_%H%M%S).txt"
 echo "Benchmark Started at $(date)" > $LOG_FILE
 
 for i in $(seq 1 $PROCESS_COUNT); do

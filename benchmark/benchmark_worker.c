@@ -31,7 +31,7 @@ double current_time_sec() {
 // randomly fill page (with random value)
 void fill_random(char *page) {
     for (int i = 0; i < PAGE_SIZE; i++) {
-        page[i] = rand() % 256;
+        page[i] = (rand() % 4) * 64; // rand() % 256;
     }
 }
 
