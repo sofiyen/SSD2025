@@ -52,4 +52,7 @@ To run the benchmark:
     ```bash
     bash run.sh
     ```
-
+> You can manually set values :
+> 1. Compression mode in `run.sh`.
+> 2. Active ratio / Number of processes / Per-process memory in `run_benchmark.sh` (at the top). 
+> 3. Number of active for loops in `benchmark_worker.c`.

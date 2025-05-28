@@ -51,7 +51,7 @@ if [ "$MODE" = "dynamic" ]; then
     fi
 fi
 
-THRESHOLD=20
+THRESHOLD=50
 echo "Setting dynamic threshold to $THRESHOLD%"
 echo $THRESHOLD > /sys/block/zram0/dynamic_threshold
 if [ $? -ne 0 ]; then

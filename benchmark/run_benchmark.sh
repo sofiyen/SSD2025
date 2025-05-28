@@ -13,14 +13,15 @@ if [ $? -ne 0 ]; then
 fi
 pkill -f /root/final/benchmark_worker
 rm -rf /root/final/benchmark_worker
-gcc -o benchmark_worker benchmark_worker.c
+gcc -o benchmark_worker benchmark_worker.c -lm
 
 echo "Clean-up DONE!"
 
 
-PROCESS_COUNT=6
+PROCESS_COUNT=10
 ACTIVE_RATIO=5 # out of 100
 OOM_DETECTED=0
+PER_PROC_MEM="750MB"
 
 LOG_FILE="/root/final/logs/$MODE/$(date +%Y%m%d_%H%M%S).txt"
 echo "Benchmark Started at $(date)" > $LOG_FILE
@@ -28,7 +29,7 @@ echo "Benchmark Started at $(date)" > $LOG_FILE
 for i in $(seq 1 $PROCESS_COUNT); do
     echo "Issued process $i"
     START_TIME=$(date +%s.%N)
-    ./benchmark_worker --active-ratio $ACTIVE_RATIO &
+    ./benchmark_worker --active-ratio $ACTIVE_RATIO --per-process-memory $PER_PROC_MEM &
     PID=$!
 
     echo "[Process $i | PID=$PID] Started at $START_TIME" >> $LOG_FILE
@@ -65,7 +66,7 @@ while [ ${#PIDS[@]} -gt 0 ]; do
             if [ $EXIT_CODE -eq 137 ]; then
                 STATUS="OOM"
                 OOM_DETECTED=1
-                echo "[Process $PROCESS_IDX | PID=$PID] OOM kill！" >> $LOG_FILE
+                echo "[Process $PROCESS_IDX | PID=$PID] OOM kill at $END_TIME！" >> $LOG_FILE
             else
                 STATUS="Normal"
                 echo "[Process $PROCESS_IDX | PID=$PID] Ended at $END_TIME | Status: $STATUS" >> $LOG_FILE

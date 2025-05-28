@@ -3,18 +3,23 @@
 #include <string.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
 #include <getopt.h>
+#include <ctype.h>
+#include <math.h>
 
-#define GB (1024L * 1024L * 1024L)
+#define MB (1024ULL * 1024ULL)
+#define GB (1024ULL * 1024ULL * 1024ULL)
 #define PAGE_SIZE 4096
 
 
-size_t total_memory = (size_t)(1.5 * GB);  // per-process malloc 1.5GB
+size_t total_memory = (size_t)(1.5 * GB);  // default per-process malloc 1.5GB
 int read_count = 100;    // number of active reads          
 int active_ratio = 20;   // active ration (out of 100)                 
+int loop_num = 1000;
 
 volatile sig_atomic_t stop_flag = 0;
 
@@ -35,6 +40,28 @@ void fill_random(char *page) {
     }
 }
 
+static size_t parse_size(const char *s)
+{
+    char *end;
+    double val = strtod(s, &end);          
+    if (val <= 0)
+        return 0;
+
+    while (isspace((unsigned char)*end)) ++end;
+
+    if (strncasecmp(end, "gb", 2) == 0)
+        val *= GB;
+    else if (strncasecmp(end, "mb", 2) == 0)
+        val *= MB;
+    else
+        return 0;  
+
+    if (val > (double)SIZE_MAX)
+        return 0;
+
+    return (size_t) llround(val);          
+}
+
 int main(int argc, char *argv[]) {
     int opt;
     srand(time(NULL) + getpid());  // random seed
@@ -42,6 +69,7 @@ int main(int argc, char *argv[]) {
     // get params
     static struct option long_options[] = {
         {"active-ratio", required_argument, 0, 'a'},
+        {"per-process-memory", required_argument, 0, 'm'},
         {0, 0, 0, 0}
     };
 
@@ -54,8 +82,18 @@ int main(int argc, char *argv[]) {
                     exit(1);
                 }
                 break;
+            case 'm': {
+                size_t tmp = parse_size(optarg);
+                if (!tmp) {
+                    fprintf(stderr, "per-process-memory 解析錯誤，支援如 1.5GB 或 500MB\n");
+                    exit(EXIT_FAILURE);
+                }
+                total_memory = tmp;
+                fprintf(stderr, "Per-process total memory : %zu\n", total_memory);
+                break;
+            }
             default:
-                fprintf(stderr, "Usage: %s --active-ratio <PERCENT>\n", argv[0]);
+                fprintf(stderr, "Usage: %s --active-ratio <PERCENT> --per-process-memory <SIZE>\n", argv[0]);
                 exit(1);
         }
     }
@@ -108,7 +146,16 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, handle_signal);
     printf("[PID=%d] I'm alive! Waiting for my inevitable doom...\n", getpid());
 
-    while(!stop_flag) {
+    // while(!stop_flag) {
+    //     for (size_t i = 0; i < active_page_count; i++) {
+    //         volatile char sink = pages[i][rand() % PAGE_SIZE];
+    //         (void)sink;  // avoid compiler optimization
+    //     }
+
+    //     usleep((rand() % 400 + 100) * 1000); // 100~500ms
+    // }
+
+    for(int i = 0; i < loop_num; i++) {
         for (size_t i = 0; i < active_page_count; i++) {
             volatile char sink = pages[i][rand() % PAGE_SIZE];
             (void)sink;  // avoid compiler optimization
